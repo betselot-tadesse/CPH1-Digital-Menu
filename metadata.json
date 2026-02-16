@@ -1,0 +1,7 @@
+{
+  "name": "Crystal Plaza Digital Menu",
+  "description": "A multilingual digital menu system for Crystal Plaza Al Qasimia with a full admin dashboard for managing food items, categories, and translations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
