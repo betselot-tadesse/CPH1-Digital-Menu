@@ -35,8 +35,8 @@ export const CategoryManager: React.FC<Props> = ({ categories, onSave, onClose }
     }
   };
 
-  const handleTranslate = async () => {
-    if (!formData.en) return;
+  const handleAutoTranslate = async () => {
+    if (!formData.en || formData.en.trim().length < 2) return;
     setIsTranslating(true);
     const result = await translateWithGemini(formData.en);
     if (result) {
@@ -86,22 +86,23 @@ export const CategoryManager: React.FC<Props> = ({ categories, onSave, onClose }
           <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">English Name</label>
-                <div className="flex gap-2">
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
+                  English Name <span className="text-blue-500 font-bold ml-1 tracking-tighter">(Auto-Translates)</span>
+                </label>
+                <div className="relative">
                   <input
                     type="text"
                     value={formData.en}
                     onChange={e => setFormData({ ...formData, en: e.target.value })}
-                    className="flex-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                    onBlur={handleAutoTranslate}
+                    className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                     placeholder="Category name"
                   />
-                  <button
-                    onClick={handleTranslate}
-                    disabled={isTranslating}
-                    className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold hover:bg-purple-100 disabled:opacity-50 transition-colors"
-                  >
-                    {isTranslating ? '...' : '✨'}
-                  </button>
+                  {isTranslating && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -112,6 +113,7 @@ export const CategoryManager: React.FC<Props> = ({ categories, onSave, onClose }
                   value={formData.ar}
                   onChange={e => setFormData({ ...formData, ar: e.target.value })}
                   className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-arabic"
+                  placeholder={isTranslating ? "Translating..." : ""}
                 />
               </div>
               <div>
@@ -121,6 +123,7 @@ export const CategoryManager: React.FC<Props> = ({ categories, onSave, onClose }
                   value={formData.ru}
                   onChange={e => setFormData({ ...formData, ru: e.target.value })}
                   className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={isTranslating ? "..." : ""}
                 />
               </div>
               <div>
@@ -130,6 +133,7 @@ export const CategoryManager: React.FC<Props> = ({ categories, onSave, onClose }
                   value={formData.zh}
                   onChange={e => setFormData({ ...formData, zh: e.target.value })}
                   className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-chinese"
+                  placeholder={isTranslating ? "..." : ""}
                 />
               </div>
             </div>

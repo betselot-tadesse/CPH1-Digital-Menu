@@ -26,12 +26,19 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
     }
   );
 
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [isTranslatingName, setIsTranslatingName] = useState(false);
+  const [isTranslatingDesc, setIsTranslatingDesc] = useState(false);
 
-  const handleTranslate = async (field: 'name' | 'description') => {
+  const handleAutoTranslate = async (field: 'name' | 'description') => {
     const text = formData[field]?.en;
-    if (!text) return;
-    setIsTranslating(true);
+    if (!text || text.trim().length < 2) return;
+    
+    // Don't re-translate if translations already exist unless manually forced (optional)
+    // For this implementation, we translate whenever the English field loses focus
+    
+    if (field === 'name') setIsTranslatingName(true);
+    else setIsTranslatingDesc(true);
+
     const translations = await translateWithGemini(text);
     if (translations) {
       setFormData((prev) => ({
@@ -39,7 +46,9 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
         [field]: translations,
       }));
     }
-    setIsTranslating(false);
+    
+    if (field === 'name') setIsTranslatingName(false);
+    else setIsTranslatingDesc(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,41 +72,47 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
         {/* Left Side: General Info */}
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">English Name</label>
-            <div className="flex gap-2">
+            <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">
+              English Name <span className="text-[10px] text-blue-500 font-black ml-2 tracking-tighter">(Auto-Translates)</span>
+            </label>
+            <div className="relative">
               <input
                 type="text"
                 value={formData.name?.en}
                 onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, en: e.target.value } })}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                onBlur={() => handleAutoTranslate('name')}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none pr-12"
                 placeholder="e.g. Traditional Hummus"
               />
-              <button
-                onClick={() => handleTranslate('name')}
-                disabled={isTranslating}
-                className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-100 disabled:opacity-50 transition-colors font-bold whitespace-nowrap"
-              >
-                {isTranslating ? '...' : '✨ Translate'}
-              </button>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
+                {isTranslatingName ? (
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span title="Will translate automatically on focus out" className="text-slate-300">✨</span>
+                )}
+              </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">English Description</label>
-            <div className="flex gap-2">
+            <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">
+              English Description <span className="text-[10px] text-blue-500 font-black ml-2 tracking-tighter">(Auto-Translates)</span>
+            </label>
+            <div className="relative">
               <textarea
                 value={formData.description?.en}
                 onChange={(e) => setFormData({ ...formData, description: { ...formData.description!, en: e.target.value } })}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-32"
+                onBlur={() => handleAutoTranslate('description')}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-32 pr-12"
                 placeholder="Tell guests about this delicious dish..."
               />
-              <button
-                onClick={() => handleTranslate('description')}
-                disabled={isTranslating}
-                className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-100 disabled:opacity-50 transition-colors self-start"
-              >
-                ✨
-              </button>
+              <div className="absolute right-4 top-4">
+                 {isTranslatingDesc ? (
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span className="text-slate-300">✨</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -173,7 +188,15 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
            </div>
 
            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-             <h3 className="text-xs uppercase font-black text-slate-400 mb-4 tracking-widest">Translation Overrides</h3>
+             <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xs uppercase font-black text-slate-400 tracking-widest">Automatic Translations</h3>
+                {(isTranslatingName || isTranslatingDesc) && (
+                  <span className="text-[10px] font-bold text-blue-500 animate-pulse flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                    Updating translations...
+                  </span>
+                )}
+             </div>
              <div className="space-y-4">
                <div>
                  <span className="text-[10px] font-black text-slate-400 uppercase ml-1">Arabic</span>
@@ -183,6 +206,7 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
                    value={formData.name?.ar}
                    onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, ar: e.target.value } })}
                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-arabic mt-1 focus:ring-1 focus:ring-blue-400 outline-none"
+                   placeholder={isTranslatingName ? "Translating..." : "Auto-generated"}
                  />
                </div>
                <div className="grid grid-cols-2 gap-4">
@@ -193,6 +217,7 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
                      value={formData.name?.ru}
                      onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, ru: e.target.value } })}
                      className="w-full p-3 bg-white border border-slate-200 rounded-xl mt-1 focus:ring-1 focus:ring-blue-400 outline-none"
+                     placeholder={isTranslatingName ? "..." : "Auto-generated"}
                    />
                  </div>
                  <div>
@@ -202,6 +227,7 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
                      value={formData.name?.zh}
                      onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, zh: e.target.value } })}
                      className="w-full p-3 bg-white border border-slate-200 rounded-xl mt-1 font-chinese focus:ring-1 focus:ring-blue-400 outline-none"
+                     placeholder={isTranslatingName ? "..." : "Auto-generated"}
                    />
                  </div>
                </div>
