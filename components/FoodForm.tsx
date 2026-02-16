@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FoodItem, Category, Language, MultilingualString } from '../types';
+import { FoodItem, Category, MultilingualString } from '../types';
 import { translateWithGemini } from '../services/geminiService';
 
 interface Props {
@@ -26,19 +26,18 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
     }
   );
 
-  const [isTranslatingName, setIsTranslatingName] = useState(false);
-  const [isTranslatingDesc, setIsTranslatingDesc] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'translating' | 'saving'>('idle');
 
-  const handleAutoTranslate = async (field: 'name' | 'description') => {
+  const handleBlurTranslate = async (field: 'name' | 'description') => {
     const text = formData[field]?.en;
     if (!text || text.trim().length < 2) return;
     
-    // Don't re-translate if translations already exist unless manually forced (optional)
-    // For this implementation, we translate whenever the English field loses focus
-    
-    if (field === 'name') setIsTranslatingName(true);
-    else setIsTranslatingDesc(true);
+    // Only auto-translate if other fields are empty to avoid overwriting or redundant calls
+    const isMissingTranslations = !formData[field]?.ar || !formData[field]?.ru || !formData[field]?.zh;
+    if (!isMissingTranslations) return;
 
+    setIsTranslating(true);
     const translations = await translateWithGemini(text);
     if (translations) {
       setFormData((prev) => ({
@@ -46,9 +45,33 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
         [field]: translations,
       }));
     }
+    setIsTranslating(false);
+  };
+
+  const handleFinalSave = async () => {
+    setSaveStatus('translating');
     
-    if (field === 'name') setIsTranslatingName(false);
-    else setIsTranslatingDesc(false);
+    let finalName = { ...formData.name! };
+    let finalDesc = { ...formData.description! };
+
+    // Check if we need to force translate Name
+    if (!finalName.ar || !finalName.ru || !finalName.zh) {
+      const nameTrans = await translateWithGemini(finalName.en);
+      if (nameTrans) finalName = nameTrans;
+    }
+
+    // Check if we need to force translate Description
+    if (finalDesc.en && (!finalDesc.ar || !finalDesc.ru || !finalDesc.zh)) {
+      const descTrans = await translateWithGemini(finalDesc.en);
+      if (descTrans) finalDesc = descTrans;
+    }
+
+    setSaveStatus('saving');
+    onSave({
+      ...formData,
+      name: finalName,
+      description: finalDesc
+    });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,191 +86,151 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
   };
 
   return (
-    <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-2xl border border-slate-200">
-      <h2 className="text-3xl font-black mb-8 text-slate-800">
-        {item ? 'Modify Dish' : 'Create New Dish'}
-      </h2>
+    <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-slate-200 relative overflow-hidden">
+      {saveStatus !== 'idle' && (
+        <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-xl font-black text-slate-800">
+            {saveStatus === 'translating' ? 'AI is translating your dish...' : 'Saving to menu...'}
+          </p>
+          <p className="text-slate-500 mt-2">Crystal Plaza Al Qasimia Management</p>
+        </div>
+      )}
+
+      <div className="flex justify-between items-start mb-8">
+        <h2 className="text-3xl font-black text-slate-800">
+          {item ? 'Modify Dish' : 'New Menu Item'}
+        </h2>
+        <div className="bg-blue-50 px-4 py-2 rounded-xl text-blue-600 font-bold text-xs uppercase tracking-widest">
+          English-First Input
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Left Side: General Info */}
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">
-              English Name <span className="text-[10px] text-blue-500 font-black ml-2 tracking-tighter">(Auto-Translates)</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={formData.name?.en}
-                onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, en: e.target.value } })}
-                onBlur={() => handleAutoTranslate('name')}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none pr-12"
-                placeholder="e.g. Traditional Hummus"
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
-                {isTranslatingName ? (
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <span title="Will translate automatically on focus out" className="text-slate-300">✨</span>
-                )}
-              </div>
-            </div>
+            <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">English Name</label>
+            <input
+              type="text"
+              value={formData.name?.en}
+              onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, en: e.target.value } })}
+              onBlur={() => handleBlurTranslate('name')}
+              className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold"
+              placeholder="e.g. Grilled Salmon"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">
-              English Description <span className="text-[10px] text-blue-500 font-black ml-2 tracking-tighter">(Auto-Translates)</span>
-            </label>
-            <div className="relative">
-              <textarea
-                value={formData.description?.en}
-                onChange={(e) => setFormData({ ...formData, description: { ...formData.description!, en: e.target.value } })}
-                onBlur={() => handleAutoTranslate('description')}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-32 pr-12"
-                placeholder="Tell guests about this delicious dish..."
-              />
-              <div className="absolute right-4 top-4">
-                 {isTranslatingDesc ? (
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <span className="text-slate-300">✨</span>
-                )}
-              </div>
-            </div>
+            <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">English Description</label>
+            <textarea
+              value={formData.description?.en}
+              onChange={(e) => setFormData({ ...formData, description: { ...formData.description!, en: e.target.value } })}
+              onBlur={() => handleBlurTranslate('description')}
+              className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none h-32 italic"
+              placeholder="Describe the dish in English..."
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">Price (AED)</label>
+              <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Price (AED)</label>
               <input
                 type="number"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-black text-blue-600"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2 uppercase tracking-wide">Category</label>
+              <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Category</label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none font-bold"
               >
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name.en}</option>)}
               </select>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-6 pt-4">
-             <label className="flex items-center gap-3 cursor-pointer group">
-               <input type="checkbox" checked={formData.isVegan} onChange={e => setFormData({...formData, isVegan: e.target.checked})} className="w-6 h-6 rounded-lg accent-green-600" />
-               <span className="text-sm font-bold text-slate-700 group-hover:text-green-600 transition-colors">Vegan Friendly</span>
-             </label>
-             <label className="flex items-center gap-3 cursor-pointer group">
-               <input type="checkbox" checked={formData.isVegetarian} onChange={e => setFormData({...formData, isVegetarian: e.target.checked})} className="w-6 h-6 rounded-lg accent-emerald-600" />
-               <span className="text-sm font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">Vegetarian</span>
-             </label>
-             <label className="flex items-center gap-3 cursor-pointer group">
-               <input type="checkbox" checked={formData.isSpicy} onChange={e => setFormData({...formData, isSpicy: e.target.checked})} className="w-6 h-6 rounded-lg accent-red-600" />
-               <span className="text-sm font-bold text-slate-700 group-hover:text-red-600 transition-colors">Spicy</span>
-             </label>
-             <label className="flex items-center gap-3 cursor-pointer group">
-               <input type="checkbox" checked={formData.isAvailable} onChange={e => setFormData({...formData, isAvailable: e.target.checked})} className="w-6 h-6 rounded-lg accent-blue-600" />
-               <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">Active on Menu</span>
-             </label>
-             <label className="flex items-center gap-3 cursor-pointer group">
-               <input type="checkbox" checked={formData.isSpecialOffer} onChange={e => setFormData({...formData, isSpecialOffer: e.target.checked})} className="w-6 h-6 rounded-lg accent-amber-500" />
-               <span className="text-sm font-bold text-slate-700 group-hover:text-amber-500 transition-colors">Mark as Special Offer</span>
-             </label>
+          <div className="grid grid-cols-2 gap-4 pt-4">
+             {[
+               { id: 'isVegan', label: 'Vegan Friendly', color: 'accent-green-600' },
+               { id: 'isSpicy', label: 'Spicy / Chili', color: 'accent-red-600' },
+               { id: 'isSpecialOffer', label: 'Special Offer', color: 'accent-amber-500' },
+               { id: 'isAvailable', label: 'Show on Menu', color: 'accent-blue-600' },
+             ].map(opt => (
+               <label key={opt.id} className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                 <input 
+                   type="checkbox" 
+                   checked={(formData as any)[opt.id]} 
+                   onChange={e => setFormData({...formData, [opt.id]: e.target.checked})} 
+                   className={`w-5 h-5 rounded ${opt.color}`} 
+                 />
+                 <span className="text-sm font-bold text-slate-700">{opt.label}</span>
+               </label>
+             ))}
           </div>
         </div>
 
-        {/* Right Side: Image & Translations */}
         <div className="space-y-8">
            <div>
-              <label className="block text-sm font-bold text-slate-600 mb-4 uppercase tracking-wide">Food Image (Preview)</label>
-              <div className="group relative w-full h-80 rounded-[2rem] border-4 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
+              <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Dish Image</label>
+              <div className="group relative w-full h-80 rounded-[2rem] border-4 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 transition-all cursor-pointer">
                 {formData.imageUrl ? (
                   <>
                     <img src={formData.imageUrl} className="absolute inset-0 w-full h-full object-cover" alt="Preview" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="text-white font-bold bg-white/20 backdrop-blur-md px-6 py-2 rounded-full border border-white/30">Replace Image</span>
+                      <span className="text-white font-bold border border-white/50 px-6 py-2 rounded-full backdrop-blur-sm">Change Image</span>
                     </div>
                   </>
                 ) : (
-                  <div className="text-center p-6">
-                    <div className="w-16 h-16 bg-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    </div>
-                    <p className="text-slate-500 font-bold">Upload a high-quality photo</p>
-                    <p className="text-slate-400 text-xs mt-1">Recommended: 1200 x 800px</p>
+                  <div className="text-center p-6 text-slate-400">
+                    <svg className="w-12 h-12 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <p className="font-bold">Upload Photo</p>
                   </div>
                 )}
                 <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
               </div>
            </div>
 
-           <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+           <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs uppercase font-black text-slate-400 tracking-widest">Automatic Translations</h3>
-                {(isTranslatingName || isTranslatingDesc) && (
-                  <span className="text-[10px] font-bold text-blue-500 animate-pulse flex items-center gap-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
-                    Updating translations...
-                  </span>
+                <h3 className="text-xs uppercase font-black text-slate-400 tracking-widest">Translation Preview</h3>
+                {isTranslating && (
+                  <div className="flex items-center gap-2 text-blue-500">
+                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-[10px] font-bold">Updating...</span>
+                  </div>
                 )}
              </div>
              <div className="space-y-4">
-               <div>
-                 <span className="text-[10px] font-black text-slate-400 uppercase ml-1">Arabic</span>
-                 <input
-                   dir="rtl"
-                   type="text"
-                   value={formData.name?.ar}
-                   onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, ar: e.target.value } })}
-                   className="w-full p-3 bg-white border border-slate-200 rounded-xl font-arabic mt-1 focus:ring-1 focus:ring-blue-400 outline-none"
-                   placeholder={isTranslatingName ? "Translating..." : "Auto-generated"}
-                 />
-               </div>
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <span className="text-[10px] font-black text-slate-400 uppercase ml-1">Russian</span>
-                   <input
-                     type="text"
-                     value={formData.name?.ru}
-                     onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, ru: e.target.value } })}
-                     className="w-full p-3 bg-white border border-slate-200 rounded-xl mt-1 focus:ring-1 focus:ring-blue-400 outline-none"
-                     placeholder={isTranslatingName ? "..." : "Auto-generated"}
-                   />
-                 </div>
-                 <div>
-                   <span className="text-[10px] font-black text-slate-400 uppercase ml-1">Chinese</span>
-                   <input
-                     type="text"
-                     value={formData.name?.zh}
-                     onChange={(e) => setFormData({ ...formData, name: { ...formData.name!, zh: e.target.value } })}
-                     className="w-full p-3 bg-white border border-slate-200 rounded-xl mt-1 font-chinese focus:ring-1 focus:ring-blue-400 outline-none"
-                     placeholder={isTranslatingName ? "..." : "Auto-generated"}
-                   />
-                 </div>
-               </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🇦🇪</span>
+                  <div className="flex-1 text-right font-arabic font-bold text-slate-700 truncate">{formData.name?.ar || '...'}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🇷🇺</span>
+                  <div className="flex-1 text-slate-700 font-bold truncate">{formData.name?.ru || '...'}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🇨🇳</span>
+                  <div className="flex-1 font-chinese font-bold text-slate-700 truncate">{formData.name?.zh || '...'}</div>
+                </div>
              </div>
+             <p className="text-[10px] text-slate-300 mt-6 text-center uppercase font-bold tracking-tighter">Translations are managed by Crystal Plaza AI</p>
            </div>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row justify-end gap-4 mt-12 pt-8 border-t border-slate-100">
-        <button 
-          onClick={onCancel} 
-          className="px-8 py-4 text-slate-500 hover:text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors order-2 sm:order-1"
-        >
-          Discard Changes
-        </button>
+        <button onClick={onCancel} className="px-8 py-4 text-slate-400 hover:text-slate-600 font-bold">Discard</button>
         <button
-          onClick={() => onSave(formData)}
-          className="px-12 py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all active:scale-[0.98] order-1 sm:order-2"
+          onClick={handleFinalSave}
+          disabled={!formData.name?.en}
+          className="px-12 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all active:scale-[0.98] disabled:opacity-50"
         >
-          {item ? 'Save Updates' : 'Publish to Menu'}
+          {item ? 'Save & Update' : 'Publish Menu Item'}
         </button>
       </div>
     </div>
