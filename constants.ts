@@ -22,11 +22,12 @@ export const INITIAL_DATA: MenuData = {
       description: { en: 'Classic middle eastern chickpeas dip served with fresh pita.', ar: 'غمس الحمص الشرق أوسطي الكلاسيكي يقدم مع خبز بيتا الطازج.', ru: 'Классический ближневосточный соус из нута, подается со свежей питой.', zh: '经典的中东鹰嘴豆泥，搭配新鲜的皮塔饼。' },
       price: 15,
       category: 'cat-1',
-      imageUrl: 'https://picsum.photos/seed/hummus/400/300',
+      imageUrl: 'https://images.unsplash.com/photo-1577906030551-5b91627210e7?auto=format&fit=crop&q=80&w=800',
       isVegan: true,
       isVegetarian: true,
       isSpicy: false,
-      isAvailable: true
+      isAvailable: true,
+      isSpecialOffer: false
     },
     {
       id: 'item-2',
@@ -34,11 +35,12 @@ export const INITIAL_DATA: MenuData = {
       description: { en: 'A selection of marinated lamb and chicken grilled to perfection.', ar: 'مجموعة مختارة من لحم الغنم والدجاج المتبل المشوي بإتقان.', ru: 'Ассорти из маринованной баранины и курицы, приготовленное на гриле.', zh: '精选腌制羊肉和鸡肉，烤至完美。' },
       price: 45,
       category: 'cat-2',
-      imageUrl: 'https://picsum.photos/seed/grill/400/300',
+      imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800',
       isVegan: false,
       isVegetarian: false,
       isSpicy: true,
-      isAvailable: true
+      isAvailable: true,
+      isSpecialOffer: true
     }
   ]
 };

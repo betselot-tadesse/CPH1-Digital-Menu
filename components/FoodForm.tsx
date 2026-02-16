@@ -22,6 +22,7 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
       isVegetarian: false,
       isSpicy: false,
       isAvailable: true,
+      isSpecialOffer: false,
     }
   );
 
@@ -138,6 +139,10 @@ export const FoodForm: React.FC<Props> = ({ item, categories, onSave, onCancel }
              <label className="flex items-center gap-3 cursor-pointer group">
                <input type="checkbox" checked={formData.isAvailable} onChange={e => setFormData({...formData, isAvailable: e.target.checked})} className="w-6 h-6 rounded-lg accent-blue-600" />
                <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">Active on Menu</span>
+             </label>
+             <label className="flex items-center gap-3 cursor-pointer group">
+               <input type="checkbox" checked={formData.isSpecialOffer} onChange={e => setFormData({...formData, isSpecialOffer: e.target.checked})} className="w-6 h-6 rounded-lg accent-amber-500" />
+               <span className="text-sm font-bold text-slate-700 group-hover:text-amber-500 transition-colors">Mark as Special Offer</span>
              </label>
           </div>
         </div>

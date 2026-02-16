@@ -20,20 +20,23 @@ export const GuestView: React.FC<Props> = ({ data }) => {
   }, [data.items, activeCategory]);
 
   const labels = {
-    en: { vegan: 'Vegan', veg: 'Vegetarian', spicy: 'Spicy', price: 'AED', menu: 'Menu', subtitle: 'Crystal Plaza Al Qasimia' },
-    ar: { vegan: 'نباتي صرف', veg: 'نباتي', spicy: 'حار', price: 'درهم', menu: 'القائمة', subtitle: 'كريستال بلازا القاسمية' },
-    ru: { vegan: 'Веган', veg: 'Вегетарианское', spicy: 'Острое', price: 'AED', menu: 'Меню', subtitle: 'Crystal Plaza Al Qasimia' },
-    zh: { vegan: '纯素', veg: '素食', spicy: '辣', price: 'AED', menu: '菜单', subtitle: 'Crystal Plaza Al Qasimia' }
+    en: { vegan: 'Vegan', veg: 'Vegetarian', spicy: 'Spicy', special: 'Special Offer', price: 'AED', menu: 'Menu', subtitle: 'Crystal Plaza Al Qasimia' },
+    ar: { vegan: 'نباتي صرف', veg: 'نباتي', spicy: 'حار', special: 'عرض خاص', price: 'درهم', menu: 'القائمة', subtitle: 'كريستال بلازا القاسمية' },
+    ru: { vegan: 'Веган', veg: 'Вегетарианское', spicy: 'Острое', special: 'Спецпредложение', price: 'AED', menu: 'Меню', subtitle: 'Crystal Plaza Al Qasimia' },
+    zh: { vegan: '纯素', veg: '素食', spicy: '辣', special: '特价优惠', price: 'AED', menu: '菜单', subtitle: 'Crystal Plaza Al Qasimia' }
   }[currentLang];
 
   return (
     <div className={`min-h-screen bg-slate-50 pb-20 ${isRtl ? 'font-arabic' : currentLang === 'zh' ? 'font-chinese' : ''}`} dir={langConfig.dir}>
       {/* Hero Header */}
-      <header className="relative h-72 md:h-96 overflow-hidden">
+      <header className="relative h-72 md:h-96 overflow-hidden bg-slate-200">
         <img
           src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=1200"
           className="w-full h-full object-cover"
           alt="Crystal Plaza Al Qasimia"
+          fetchpriority="high"
+          decoding="sync"
+          loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent flex flex-col justify-end p-6 md:p-12 text-white">
           <h1 className="text-4xl md:text-6xl font-black tracking-tight">{labels.menu}</h1>
@@ -66,19 +69,27 @@ export const GuestView: React.FC<Props> = ({ data }) => {
 
         {/* Menu Items */}
         <div className="grid grid-cols-1 gap-10">
-          {filteredItems.map((item) => (
+          {filteredItems.map((item, index) => (
             <div
               key={item.id}
               className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 flex flex-col md:flex-row hover:shadow-2xl transition-all duration-500 group"
             >
-              {/* Massive Image Section */}
-              <div className="w-full md:w-2/5 lg:w-1/2 h-72 md:h-auto relative overflow-hidden">
+              {/* Image Section - Optimized for instant loading */}
+              <div className="w-full md:w-2/5 lg:w-1/2 h-72 md:h-auto relative overflow-hidden bg-slate-100">
                 <img 
                   src={item.imageUrl} 
                   alt={item.name[currentLang]} 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  loading="eager"
+                  fetchpriority={index < 3 ? "high" : "auto"}
+                  decoding="async"
                 />
                 <div className="absolute top-4 left-4 flex flex-col gap-2">
+                   {item.isSpecialOffer && (
+                    <span className="bg-amber-400 text-slate-900 text-[11px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-lg flex items-center gap-2 border border-amber-300 animate-pulse">
+                      ✨ {labels.special}
+                    </span>
+                   )}
                    {item.isVegan && (
                     <span className="bg-green-500/90 backdrop-blur-md text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
                       {labels.vegan}
@@ -147,7 +158,12 @@ export const GuestView: React.FC<Props> = ({ data }) => {
           <span>•</span>
           <span>Room Service</span>
         </div>
-        &copy; {new Date().getFullYear()} Crystal Plaza Al Qasimia. All rights reserved.
+        <div className="mb-2">
+          &copy; {new Date().getFullYear()} Crystal Plaza Al Qasimia. All rights reserved.
+        </div>
+        <div className="text-[10px] font-bold tracking-widest uppercase opacity-40 mt-2">
+          Built by Betselot Tadesse
+        </div>
       </footer>
     </div>
   );

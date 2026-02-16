@@ -19,6 +19,7 @@ export interface FoodItem {
   isVegetarian: boolean;
   isSpicy: boolean;
   isAvailable: boolean;
+  isSpecialOffer: boolean;
 }
 
 export interface Category {
